@@ -131,7 +131,7 @@ export default class URLS {
     static readonly RECOMMEND = URLS.P_AUTO + URLS.D_API + '/x/web-interface/archive/related';
     static readonly PLAYTAG = URLS.P_AUTO + URLS.D_COMMENT + '/playtag';
     /** //comment.bilibili.com/recommend/${aid}.json?html5=1 */
-    static readonly RECOMMEND_ORIGIN = URLS.P_AUTO + URLS.D_COMMENT + '/recommend/';
+    static readonly RECOMMEND_ORIGIN = URLS.P_AUTO + URLS.D_API + '/x/web-interface/archive/related?aid=';
 
     /**
      * @kind 稍后再看、播单

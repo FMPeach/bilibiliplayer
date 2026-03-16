@@ -20,6 +20,13 @@ interface IOutData {
 export { IOutData as ApiRecommendOriginOutData };
 
 export async function apiRecommendOrigin(aid: number) {
-    const response = await fetch(URLS.RECOMMEND_ORIGIN + aid + '.json?html5=1');
-    return <IOutData[]>await response.json()
+    const response = await fetch(URLS.RECOMMEND_ORIGIN + aid);
+    const json = await response.json();
+    if (json?.code === 0 && Array.isArray(json.data)) {
+        return <IOutData[]>json.data.map((d: any) => ({
+            ...d,
+            cover: d.pic,
+        }));
+    }
+    return <IOutData[]>[];
 }
