@@ -65,12 +65,18 @@ class VolumeBar {
             height: 60,
             value: this.lastVideoVolume,
 
+            start: () => {
+                // 开始拖拽时添加 volume-dragging 类
+                that.container.addClass('volume-dragging');
+            },
             move: (e: IEvent) => {
                 if (player.video) {
                     that.setVolume(e.value, true);
                 }
             },
             change: (e: IEvent) => {
+                // 拖拽结束时移除 volume-dragging 类
+                that.container.removeClass('volume-dragging');
                 if (player.video) {
                     that.setVolume(e.value, true);
                     if (e.manual) {
@@ -83,13 +89,6 @@ class VolumeBar {
                 }
                 const v = e.value * 100;
             }
-        });
-        volumebarContainer[0].addEventListener('mousedown', () => {
-            this.container.addClass('mouse-hold');
-
-            $(document).one('mouseup', () => {
-                this.container.removeClass('mouse-hold');
-            });
         });
         this.setVolume(this.lastVideoVolume);
         this.globalEvents();
