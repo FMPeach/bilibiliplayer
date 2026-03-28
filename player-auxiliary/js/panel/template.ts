@@ -118,7 +118,10 @@ class Template {
             const wrap = <JQuery<HTMLElement>>that.wraplist?.find(`[role="${$(this).attr("for")}"]`);
             wrap.siblings("." + prefix + "-filter-wrap").hide();
             wrap.show();
-            that.auxiliary.trigger(STATE.EVENT.AUXILIARY_PANEL_RESIZE, 0);
+            // 延迟触发确保 DOM 布局稳定后再执行滚动恢复
+            setTimeout(() => {
+                that.auxiliary.trigger(STATE.EVENT.AUXILIARY_PANEL_RESIZE, 0);
+            }, 0);
         });
 
         switch (this.auxiliary.config.theme) {

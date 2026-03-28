@@ -1,6 +1,7 @@
 import Auxiliary, { IReceived } from '../auxiliary';
 import * as WD from '../const/webpage-directive';
 import * as PD from '../const/player-directive';
+import STATE from './state';
 import { IListItem } from '../io/rebuild-playlist-noview-data';
 import Tooltip from '../plugins/tooltip';
 import { Order } from '../plugins/order';
@@ -32,6 +33,8 @@ class Watchlater {
     private prefixName: string;
     private order = "sequential";
     scrollTo = 0;
+    private rememberedScrollTo = 0;
+    private lastProgrammaticScrollTime = 0;
     itemSup: any;
     private video: IVideoInfo = {};
 
@@ -197,7 +200,7 @@ class Watchlater {
             axis: "y",
             scrollInertia: 100,
             autoHideScrollbar: true,
-            setTop: this.getTop() + "px",
+            setTop: "0px",
 
             mouseWheel: {
                 scrollAmount: 100,
@@ -208,14 +211,23 @@ class Watchlater {
                 whileScrolling: function () {
                     that.scrollTo = (<any>this).mcs.top;
                     that.mcsTop((<any>this).mcs.top);
+                    if (Date.now() - that.lastProgrammaticScrollTime > 100) {
+                        that.rememberedScrollTo = (<any>this).mcs.top;
+                    }
                 },
 
                 onScroll: function () {
                     that.scrollTo = (<any>this).mcs.top;
                     that.mcsTop((<any>this).mcs.top);
+                    if (Date.now() - that.lastProgrammaticScrollTime > 100) {
+                        that.rememberedScrollTo = (<any>this).mcs.top;
+                    }
                 },
             },
         });
+        setTimeout(() => {
+            this.scrollToActive();
+        }, 100);
     }
     mcsTop(input: number) {
         let index = 0;
@@ -243,24 +255,42 @@ class Watchlater {
             index += outerHeight;
         }
     }
+    
     getTop() {
         const cid = this.auxiliary.player.config.cid;
         const item = $(`[data-aid="${this.auxiliary.player.config.aid}"].${this.prefixName}-item`, this.elements.itemsSnippet);
         const part = $(`[data-cid="${cid}"].${this.prefixName}-part-item`, item);
 
         if (item.length) {
-            const top = item.offset()!.top - this.elements.itemsSnippet.offset()!.top;
+            const contentContainer = this.elements.itemsSnippet.find('.mCSB_container');
+            const baseEl = contentContainer.length ? contentContainer : this.elements.itemsSnippet;
+            const top = item.offset()!.top - baseEl.offset()!.top;
 
             if (part.length) {
                 const height = this.elements.itemsSnippet.height()!;
                 const outer = item.outerHeight()!;
                 const outerHeight = $("." + this.prefixName + "-item-sup").outerHeight()!;
-                return height < outer ? part.offset()!.top - this.elements.itemsSnippet.offset()!.top - outerHeight : top;
+                if (height < outer) {
+                    return part.offset()!.top - baseEl.offset()!.top - outerHeight;
+                }
             }
 
-            return top;
+            const prevItem = item.prev(`.${this.prefixName}-item`);
+            const prevHeight = prevItem.length ? prevItem.outerHeight()! : item.outerHeight()!;
+            return Math.max(0, top - prevHeight);
         }
         return 0;
+    }
+
+    private scrollToActive() {
+        const top = this.getTop();
+        this.elements.itemsSnippet.mCustomScrollbar('scrollTo', top + 'px', {
+            scrollInertia: 0,
+            timeout: 0,
+        });
+        this.lastProgrammaticScrollTime = Date.now();
+        this.scrollTo = -top;
+        this.rememberedScrollTo = -top;
     }
 
     private globalEvents() {
@@ -279,6 +309,31 @@ class Watchlater {
             );
             item.find(`.${this.prefixName}-info-watched`).css('display', '');
         });
+
+        this.auxiliary.player.bind('video_fullscreen_mode_changed', () => {
+            setTimeout(() => {
+                this.scrollToActive();
+            }, 50);
+        });
+
+        this.auxiliary.directiveManager.on(PD.VI_RECT_CHANGE.toString(), () => {
+            setTimeout(() => {
+                this.scrollToActive();
+            }, 100);
+        });
+
+        this.auxiliary.bind(STATE.EVENT.AUXILIARY_PANEL_RESIZE, () => {
+            setTimeout(() => {
+                if (this.elements.itemsSnippet.is(':visible')) {
+                    this.elements.itemsSnippet.mCustomScrollbar('scrollTo', (-this.rememberedScrollTo) + 'px', {
+                        scrollInertia: 0,
+                        timeout: 0,
+                    });
+                }
+            }, 45);
+        });
+
+
 
     }
 

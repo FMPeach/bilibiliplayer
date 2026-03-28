@@ -1,6 +1,7 @@
 import Auxiliary, { IReceived } from '../auxiliary';
 import * as WD from '../const/webpage-directive';
 import * as PD from '../const/player-directive';
+import STATE from './state';
 import Tooltip from '../plugins/tooltip';
 import { fmSeconds, getBit, htmlEncode, thumbnail } from '@shared/utils';
 import { Order } from '../plugins/order';
@@ -78,6 +79,8 @@ class Playlist {
     private prefixName: string;
     itemSup: any;
     scrollTo = 0;
+    private rememberedScrollTo = 0;
+    private lastProgrammaticScrollTime = 0;
 
     constructor(auxiliary: Auxiliary, options: IPanelOptions) {
         this.auxiliary = auxiliary;
@@ -231,7 +234,7 @@ class Playlist {
             axis: "y",
             scrollInertia: 100,
             autoHideScrollbar: true,
-            setTop: this.getTop() + "px",
+            setTop: "0px",
 
             mouseWheel: {
                 scrollAmount: 100,
@@ -242,6 +245,9 @@ class Playlist {
                 whileScrolling: function () {
                     that.scrollTo = (<any>this).mcs.top;
                     that.mcsTop((<any>this).mcs.top);
+                    if (Date.now() - that.lastProgrammaticScrollTime > 100) {
+                        that.rememberedScrollTo = (<any>this).mcs.top;
+                    }
 
                     if (that.listInfo.hasNext && (<any>this).mcs.topPct >= 99) {
                         that.whileScrolling(true); // 滚动到底部剩下10%时加载更多
@@ -253,9 +259,15 @@ class Playlist {
                 onScroll: function () {
                     that.scrollTo = (<any>this).mcs.top;
                     that.mcsTop((<any>this).mcs.top);
+                    if (Date.now() - that.lastProgrammaticScrollTime > 100) {
+                        that.rememberedScrollTo = (<any>this).mcs.top;
+                    }
                 },
             },
         });
+        setTimeout(() => {
+            this.scrollToActive();
+        }, 100);
 
         this.container.click((e) => {
             const parents = $(e.target).parents(`.${this.prefix}-playlist-item`);
@@ -363,18 +375,38 @@ class Playlist {
         const part = $(`[data-cid="${cid}"].${this.prefixName}-part-item`, item);
 
         if (item.length) {
-            const top = item.offset()!.top - this.elements.list.offset()!.top;
+            const listContainer = this.elements.list.closest(`.${this.prefixName}-playlist`);
+            const contentContainer = listContainer.find('.mCSB_container');
+            const baseEl = contentContainer.length ? contentContainer : (listContainer.length ? listContainer : this.elements.list);
+            const top = item.offset()!.top - baseEl.offset()!.top;
 
             if (part.length) {
-                const height = this.elements.list.height()!;
+                const containerHeight = listContainer.length ? listContainer.height()! : this.elements.list.height()!;
                 const outer = item.outerHeight()!;
-                const outerHeight = $("." + this.prefixName + "-item-sup").outerHeight()!;
-                return height < outer ? part.offset()!.top - this.elements.list.offset()!.top - outerHeight : top;
+                const supHeight = $("." + this.prefixName + "-item-sup").outerHeight()!;
+                if (containerHeight < outer) {
+                    return part.offset()!.top - baseEl.offset()!.top - supHeight;
+                }
             }
 
-            return top;
+            const prevItem = item.prev(`.${this.prefixName}-item`);
+            const prevHeight = prevItem.length ? prevItem.outerHeight()! : item.outerHeight()!;
+            return Math.max(0, top - prevHeight);
         }
         return 0;
+    }
+
+    private scrollToActive() {
+        const listContainer = this.elements.list.closest(`.${this.prefixName}-playlist`);
+        const target = listContainer.length ? listContainer : this.elements.list;
+        const top = this.getTop();
+        target.mCustomScrollbar('scrollTo', top + 'px', {
+            scrollInertia: 0,
+            timeout: 0,
+        });
+        this.lastProgrammaticScrollTime = Date.now();
+        this.scrollTo = -top;
+        this.rememberedScrollTo = -top;
     }
 
     private globalEvents() {
@@ -391,7 +423,35 @@ class Playlist {
             this.elements.list.empty();
             this.itemsSnippet();
             this.setActive();
+            this.scrollToActive();
         });
+
+        this.auxiliary.player.bind('video_fullscreen_mode_changed', () => {
+            setTimeout(() => {
+                this.scrollToActive();
+            }, 50);
+        });
+
+        this.auxiliary.directiveManager.on(PD.VI_RECT_CHANGE.toString(), () => {
+            setTimeout(() => {
+                this.scrollToActive();
+            }, 100);
+        });
+
+        this.auxiliary.bind(STATE.EVENT.AUXILIARY_PANEL_RESIZE, () => {
+            setTimeout(() => {
+                const listContainer = this.elements.list.closest(`.${this.prefixName}-playlist`);
+                const target = listContainer.length ? listContainer : this.elements.list;
+                if (target.is(':visible')) {
+                    target.mCustomScrollbar('scrollTo', (-this.rememberedScrollTo) + 'px', {
+                        scrollInertia: 0,
+                        timeout: 0,
+                    });
+                }
+            }, 45);
+        });
+
+
     }
 
     private snippet() {
