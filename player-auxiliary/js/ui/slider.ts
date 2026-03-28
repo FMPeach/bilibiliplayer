@@ -79,8 +79,8 @@ export class Slider extends Base {
         this.tracker = $("<div>").addClass(this.cssPrefix("tracker")).appendTo(this.trackerWrp);
         this.handle = $("<div>").addClass(this.cssPrefix("handle")).appendTo(this.tracker);
         if (this.options.videoProgress) {
-            this.bufferBar = $(`<div class="bilibili-player-video-progress-buffer" style="${this.options.aclinic ? 'width: 0;' : 'height: 0;'}">
-        <div class="bilibili-player-video-progress-buffer-range" style="overflow: hidden;"></div>
+            this.bufferBar = $(`<div class="bilibili-player-video-progress-buffer">
+        <div class="bilibili-player-video-progress-buffer-range"></div>
     </div>`).appendTo(this.tracker);
         }
         if (this.options.aclinic) {
@@ -233,9 +233,9 @@ export class Slider extends Base {
 
                 this.valueBuffer = value;
                 if (this.options.aclinic) {
-                    this.bufferBar && (this.bufferBar[0].style.cssText = "width: " + this.valueBuffer * 100 + "%");
+                    this.bufferBar && (this.bufferBar[0].children[0].style.width = this.valueBuffer * 100 + "%");
                 } else {
-                    this.bufferBar && (this.bufferBar[0].style.cssText = "height: " + this.valueBuffer * 100 + "%");
+                    this.bufferBar && (this.bufferBar[0].children[0].style.height = this.valueBuffer * 100 + "%");
                 }
             }
             return this.valueBuffer;
