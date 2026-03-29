@@ -185,7 +185,7 @@ export class ReloadMedia {
                         Number(result.bp) !== 1 &&
                         !result.hasPaid;
                     that.player._setVideoQuality(result.quality);
-                    that.player.controller.updateQuality(result, value);
+                    const qualityResult = result;
 
                     let seekType = 'range';
 
@@ -366,7 +366,7 @@ export class ReloadMedia {
                                 } else {
                                     that.player.reloadMedia._setVideoWrap(video, changePlayer, pipMode, playerType);
                                     used = true;
-                                    callback?.(true);
+                                    callback?.(true, qualityResult);
                                 }
                             }, 5000); // 切清晰度5s后提示成功（预防长时间等待）
                             $(video).on('canplay', function () {
@@ -376,7 +376,7 @@ export class ReloadMedia {
                                     clearTimeout(that.seamlessPauseTimer);
                                     that.player.reloadMedia._setVideoWrap(video, changePlayer, pipMode, playerType);
                                     used = true;
-                                    callback?.(true);
+                                    callback?.(true, qualityResult);
                                 }
                             });
                         } else {
@@ -402,7 +402,7 @@ export class ReloadMedia {
                                     video.play();
                                     that.player.reloadMedia._setVideoWrap(video, changePlayer, pipMode, playerType);
                                     used = true;
-                                    callback?.(true);
+                                    callback?.(true, qualityResult);
                                 }
                             }, 5000);
                             $(video).on('loadedmetadata', function () {
@@ -460,7 +460,7 @@ export class ReloadMedia {
                                             }
                                         }
                                         that.player.reloadMedia._setVideoWrap(video, changePlayer, pipMode, playerType);
-                                        callback?.(true);
+                                        callback?.(true, qualityResult);
                                     }, video['currentTime'] * 1000 - seekTime * 1000);
                                 }
                             });

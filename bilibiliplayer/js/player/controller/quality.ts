@@ -74,6 +74,9 @@ class Quality {
         if (!result) {
             return;
         }
+        if (this.changing) {
+            return;
+        }
         const qualityList = result.acceptQuality;
         const bp = result.bp;
         const hasPaid = result.hasPaid;
@@ -236,7 +239,7 @@ class Quality {
                     player.set('setting_config', 'defquality', value);
                     this.changing = true;
                     player.toast.addTopHinter(`正在为您切换到${qualityMap[value]},请稍候...`);
-                    this.player.reloadMedia.quality(Number(value), (success: any) => {
+                    this.player.reloadMedia.quality(Number(value), (success: any, qualityResult?: any) => {
                         if (success) {
                             this.changing = false;
                             nowQuality = value;
@@ -245,7 +248,12 @@ class Quality {
                                 this.changeSuccessFromToast = true;
                             }
                             player.videoData.videoQuality = Number(value);
-                            this.container.removeClass('disabled');
+                            if (qualityResult) {
+                                player.controller.updateQuality(qualityResult, Number(value));
+                            } else {
+                                this.container.removeClass('disabled');
+                            }
+
                             if (!player.initialized) {
                                 player.loadingpanel.complete(3, true);
                             }
