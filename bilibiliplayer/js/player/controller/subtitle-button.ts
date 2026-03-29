@@ -413,7 +413,11 @@ class SubtitleButton {
                             return v;
                     }
                 },
+                start: () => {
+                    this.wrap.addClass('subtitle-dragging');
+                },
                 change: e => {
+                    this.wrap.removeClass('subtitle-dragging');
                     this.player.set('subtitle', 'fontsize', e.value);
                     this.player.subtitle.setStyle({
                         fontSize: e.value,
@@ -472,6 +476,9 @@ class SubtitleButton {
                 // valueSetAnalyze: val => val * 20 / 18 - 2 / 18,
                 // valueGetAnalyze: val => val * 18 / 20 + 0.1,
                 formatTooltip: val => `${Math.round(val * 100)}%`,
+                start: () => {
+                    this.wrap.addClass('subtitle-dragging');
+                },
                 move: e => {
                     const value = Number(e.value.toFixed(2));
                     this.player.set('subtitle', 'backgroundopacity', value);
@@ -480,6 +487,7 @@ class SubtitleButton {
                     });
                 },
                 change: e => {
+                    this.wrap.removeClass('subtitle-dragging');
                     const value = Number(e.value.toFixed(2));
                     this.player.set('subtitle', 'backgroundopacity', value);
                     this.player.subtitle.setStyle({

@@ -49,6 +49,16 @@ export class DanmakuSettingLite {
         const panel = this.container.find(`.${this.prefix}-danmaku-setting-lite-panel`);
         const player = this.player;
         const that = this;
+        let isDragging = false;
+
+        // 鼠标越界松开时重置拖拽状态并关闭面板
+        $(document).on('mouseup.danmaku-setting-lite', (e) => {
+            isDragging = false;
+            // 检查鼠标是否在面板外，如果在就关闭
+            if (!panel[0].contains(e.target as Node) && !that.container[0].contains(e.target as Node)) {
+                panel.hide();
+            }
+        });
 
         this.change(this.player.state.danmaku);
 
@@ -62,7 +72,11 @@ export class DanmakuSettingLite {
             valueSetAnalyze: val => val * 20 / 18 - 2 / 18,
             valueGetAnalyze: val => val * 18 / 20 + 0.1,
             formatTooltip: val => `${Math.round((val * 18 / 20 + 0.1) * 100)}%`,
+            start: () => {
+                isDragging = true;
+            },
             change: (e: IEvent) => {
+                isDragging = false;
                 this.player.set('setting_config', 'opacity', e.value.toFixed(2));
             }
         });
@@ -78,7 +92,11 @@ export class DanmakuSettingLite {
             valueSetAnalyze: b => (Number(b) === 0 || Number(b) === -1) ? 1 : b <= 100 ? (b - 1) / 104 : (b / 100 - 1 + 100 - 1) / 104,
             valueGetAnalyze: b => { b = b * 104 + 1; return b <= 100 ? b : b <= 104 ? (b - 100 + 1) * 100 : 0; },
             formatTooltip: b => { b = Math.round(b * 104 + 1); return b <= 100 ? b : b <= 104 ? (b - 100 + 1) * 100 : "无限制"; },
+            start: () => {
+                isDragging = true;
+            },
             change: (e: IEvent) => {
+                isDragging = false;
                 player.set('setting_config', 'danmakunumber', e.value === 0 ? -1 : e.value);
             }
         });
@@ -115,7 +133,11 @@ export class DanmakuSettingLite {
                         return `${b * 100}%`;
                 }
             },
+            start: () => {
+                isDragging = true;
+            },
             change: (e: IEvent) => {
+                isDragging = false;
                 player.set('setting_config', 'danmakuArea', e.value);
             }
         });
@@ -210,7 +232,9 @@ export class DanmakuSettingLite {
             this.opacityBar.resize();
         });
         this.container.on("mouseout", e => {
-            panel.hide();
+            if (!isDragging) {
+                panel.hide();
+            }
         })
     }
     private setMask(data?: string) {
