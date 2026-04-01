@@ -121,8 +121,8 @@ class Quality {
                         flag = `<span class="${this.prefix}-needlogin">登录即享</span>`;
                     }
                     const currentDescription =
-                        (acceptDescription && acceptDescription[i]?.new_description) ||
                         STATE.QUALITY_NAME[<0>qualityList[i]] ||
+                        (acceptDescription && acceptDescription[i]?.new_description) ||
                         '';
 
                     const [p = '', t = ''] = currentDescription.split(' ');
