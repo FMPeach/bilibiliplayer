@@ -152,6 +152,8 @@ class Playlist {
         this.itemsSnippet(undefined, ul);
         this.elements = {
             list: ul,
+            playlist: list,
+            navHeader: snippet,
             // order: this.container.find(`${this.prefixName}-sortlist`),
             // count: this.container.find(`${this.prefixName}-count`),
             positive: this.container.find("." + this.prefixName + "-nav-positive"),
@@ -353,6 +355,7 @@ class Playlist {
             const item = $(items[i]);
             if (this.itemSup && (item[0] === this.itemSup.container[0])) {
                 this.itemSup.target.removeAttr("data-state-play");
+                this.itemSup.target.css("top", "");
                 this.itemSup.container.prepend(this.itemSup.target);
                 this.itemSup = null;
             }
@@ -364,7 +367,9 @@ class Playlist {
                     target: item.find("." + this.prefixName + "-item-sup"),
                 };
                 this.itemSup.target.attr("data-state-play", item.attr("data-state-play"));
-                this.elements.list.prepend(this.itemSup.target);
+                const navTop = this.elements.navHeader.outerHeight(true) || 0;
+                this.itemSup.target.css("top", navTop + "px");
+                this.elements.playlist.prepend(this.itemSup.target);
             }
             index += outerHeight;
         }

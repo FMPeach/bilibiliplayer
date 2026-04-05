@@ -68,6 +68,7 @@ class PlaylistOrigin {
         this.elements = {
             title: snippet.find("." + this.prefixName + "-nav-title"),
             ownername: snippet.find("." + this.prefixName + "-nav-ownername"),
+            navHeader: snippet,
             positive: snippet.find("." + this.prefixName + "-nav-positive"),
             reverse: snippet.find("." + this.prefixName + "-nav-reverse"),
             loop: snippet.find("." + this.prefixName + "-nav-loop"),
@@ -251,6 +252,7 @@ class PlaylistOrigin {
             const item = $(items[i]);
             if (this.itemSup && (item[0] === this.itemSup.container[0])) {
                 this.itemSup.target.removeAttr("data-state-play");
+                this.itemSup.target.css("top", "");
                 this.itemSup.container.prepend(this.itemSup.target);
                 this.itemSup = null;
             }
@@ -262,6 +264,8 @@ class PlaylistOrigin {
                     target: item.find("." + this.prefixName + "-item-sup"),
                 };
                 this.itemSup.target.attr("data-state-play", item.attr("data-state-play"));
+                const navTop = this.elements.navHeader.outerHeight(true) || 0;
+                this.itemSup.target.css("top", navTop + "px");
                 this.elements.itemsSnippet.prepend(this.itemSup.target);
             }
             index += outerHeight;
