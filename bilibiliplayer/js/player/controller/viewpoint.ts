@@ -4,264 +4,274 @@ import "../../../css/view-point.less";
 import STATE from "../state";
 
 let videoDuration: number;
-let trackerWrp: HTMLElement; // 进度条可控区域，高28px
-let handleWidth: number; // 进度条圆形把手的宽度
+let trackerWrp: HTMLElement;
+let handleWidth: number;
 let sliderTracker: HTMLDivElement;
 let sliderBar: HTMLDivElement;
 
 function initSharedTools(player: Player) {
-    handleWidth = (<HTMLDivElement>(player.template.controller.find(".bpui-slider-handle")[0])).clientWidth;
+    handleWidth = (<HTMLDivElement>player.template.controller.find(".bpui-slider-handle")[0]).clientWidth;
     trackerWrp = <HTMLDivElement>player.template.controller.find(".bpui-slider-tracker-wrp")[0];
     videoDuration = player.duration()!;
 }
 function Time2Pos(time: number) {
-    // 进度条上的鼠标坐标与视频时间点的互算公式，从bilibiliPlayer.js复制过来
-    // 使视频看点标记与点击进度条后实际跳转的时间点准确对应
-    return time / videoDuration * (trackerWrp.clientWidth - handleWidth) + handleWidth / 2 + "px"
+    return time / videoDuration * (trackerWrp.clientWidth - handleWidth) + handleWidth / 2 + "px";
 }
 function Mouse2Pos(e: MouseEvent) {
-    let box = sliderBar.getBoundingClientRect();
-    let pos = (e.pageX - (box.left + window.scrollX - document.body.clientLeft) - handleWidth / 2) / (trackerWrp.clientWidth - handleWidth) * videoDuration;
-    0 > pos && (pos = 0);
-    pos > videoDuration && (pos = videoDuration);
+    const box = sliderBar.getBoundingClientRect();
+    let pos = (e.pageX - (box.left + window.scrollX - document.body.clientLeft) - handleWidth / 2)
+              / (trackerWrp.clientWidth - handleWidth) * videoDuration;
+    if (pos < 0) pos = 0;
+    if (pos > videoDuration) pos = videoDuration;
     return pos;
 }
-function divWithClass(className: string) {
-    let div = document.createElement("div");
-    div.className = className;
-    return div;
+function divWithClass(cls: string) {
+    const d = document.createElement("div");
+    d.className = cls;
+    return d;
 }
 class Timer {
-    constructor(public callback: Function) { }
     private handle: any;
-    start() { if (!this.handle) this.handle = setInterval(() => this.callback(), 3000) }
-    stop() { if (this.handle) { clearInterval(this.handle); this.handle = null } }
+    constructor(public callback: Function) {}
+    start() { if (!this.handle) this.handle = setInterval(() => this.callback(), 3000); }
+    stop()  { if (this.handle) { clearInterval(this.handle); this.handle = null; } }
 }
 class CSS {
-    static hash: { [key: string]: boolean } = {};
+    static hash: Record<string, boolean> = {};
     static add(cssText: string, symbol: string) {
         if (!Object.hasOwn(CSS.hash, symbol)) {
-            let style = document.createElement("style");
-            style.setAttribute("type", "text/css");
-            style.appendChild(document.createTextNode(cssText));
-            document.head.appendChild(style);
+            const s = document.createElement("style");
+            s.setAttribute("type", "text/css");
+            s.appendChild(document.createTextNode(cssText));
+            document.head.appendChild(s);
             CSS.hash[symbol] = true;
         }
     }
 }
 
 class ViewPointList {
-    private chptInfo?: HTMLDivElement[]; // 数组，存放每一看点的UI卡片
+    private listItems: HTMLLIElement[] = [];
     private timer: Timer;
-    private vpUI: { info: IViewPoint, el: HTMLElement }[];
-    private type: number; // type = 1：赛事看点，type = 2：普通视频分段
+    private vpUI: { info: IViewPoint; el: HTMLElement }[];
+    private type: number;
     private chptName!: HTMLDivElement;
+    private listUL!: HTMLUListElement;
 
     constructor(private player: Player, private viewPoints: IViewPoint[]) {
-        sliderTracker = <HTMLDivElement>player.template.controller.find(".bilibili-player-video-progress .bpui-slider-tracker")[0]; // 播放进度区域，6px
-        sliderBar = <HTMLDivElement>player.template.controller.find(".bilibili-player-video-progress-bar")[0];
+        sliderTracker = <HTMLDivElement>player.template.controller
+            .find(".bilibili-player-video-progress .bpui-slider-tracker")[0];
+        sliderBar = <HTMLDivElement>player.template.controller
+            .find(".bilibili-player-video-progress-bar")[0];
         initSharedTools(player);
 
         this.timer = new Timer(() => this.refreshPanel());
-        this.initGeneralUI();
+        this.initPanelUI();
         this.bindEvents();
 
         this.type = viewPoints[0].type;
         this.vpUI = [];
-        for (let v of viewPoints) {
-            let viewPointUI;
-            if (this.type == 1) {
-                viewPointUI = new eSportViewPoint(v, player);
-            } else if (this.type == 2) {
-                viewPointUI = new CommonViewPoint(v);
-            }
-            if (viewPointUI) {
-                this.vpUI.push({ info: v, el: viewPointUI.ui });
-                sliderTracker.appendChild(viewPointUI.ui);
+        for (const v of viewPoints) {
+            let marker: BaseViewPoint | undefined;
+            if (this.type === 1) marker = new eSportViewPoint(v, player);
+            else if (this.type === 2) marker = new CommonViewPoint(v);
+            if (marker) {
+                this.vpUI.push({ info: v, el: marker.ui });
+                sliderTracker.appendChild(marker.ui);
             }
         }
-
-        if (this.type == 1) {
-            this.arrangeEsportVP();
-        } else if (this.type == 2) {
-            this.arrangeCommonVP();
-        }
+        if (this.type === 1) this.arrangeEsportVP();
+        else if (this.type === 2) this.arrangeCommonVP();
     }
 
     private arrangeCommonVP() {
-        let duration = this.vpUI[this.vpUI.length - 1].info.to;
-        for (let vp of this.vpUI) {
-            let ui = vp.el;
+        const duration = this.vpUI[this.vpUI.length - 1].info.to;
+        for (const vp of this.vpUI) {
+            const ui = vp.el;
             ui.className = "bilibili-progress-segmentation";
-            let ratio = videoDuration / duration / duration;
+            const ratio = videoDuration / duration / duration;
             ui.style.width = (vp.info.to - vp.info.from) * ratio * 100 + "%";
-            ui.style.left = vp.info.from * ratio * 100 + "%";
-            ui.innerHTML = "<div><div></div></div>";
-            ui.onmouseenter = () => this.chptName.innerHTML = vp.info.content;
+            ui.style.left  = vp.info.from * ratio * 100 + "%";
+            ui.innerHTML   = "<div><div></div></div>";
+            ui.onmouseenter = () => { this.chptName.innerHTML = vp.info.content; };
         }
     }
 
     private arrangeEsportVP() {
-        CSS.add(`#app #bilibiliPlayer .bilibili-player-video-progress-detail > .bilibili-player-video-progress-detail-img {top:-120px}
-            .bilibili-player-video-progress-detail > .bilibili-player-video-progress-detail-time {top:-48px}`, "esportVP_CSS");
-        let update = () => { // 刷新看点标记的位置
-            for (let vp of this.vpUI) {
-                vp.el.style.left = Time2Pos(vp.info.to);
-            }
-        }
-        setTimeout(() => update(), 500); // 等待进度条完全加载
+        CSS.add(`
+            #app #bilibiliPlayer .bilibili-player-video-progress-detail > .bilibili-player-video-progress-detail-img { top:-120px }
+            .bilibili-player-video-progress-detail > .bilibili-player-video-progress-detail-time { top:-48px }
+        `, "esportVP_CSS");
+
+        const update = () => {
+            for (const vp of this.vpUI) vp.el.style.left = Time2Pos(vp.info.to);
+        };
+        setTimeout(() => update(), 500);
         this.chptName.style.top = "-150px";
 
-        let playerArea = <HTMLElement>document.getElementsByClassName("bilibili-player-area")[0],
-            visibility = true;
-        let hide = () => {
+        const playerArea = <HTMLElement>document.getElementsByClassName("bilibili-player-area")[0];
+        let visibility = true;
+        const hide = () => {
             if (!visibility) return;
             visibility = false;
-            for (let vp of this.vpUI) vp.el.style.opacity = "0";
-            setTimeout(() => {
-                for (let vp of this.vpUI)
-                    vp.el.style.visibility = "hidden";
-            }, 100);
-        }
-        playerArea.addEventListener("mouseleave", e => {
-            hide();
-        });
+            for (const vp of this.vpUI) vp.el.style.opacity = "0";
+            setTimeout(() => { for (const vp of this.vpUI) vp.el.style.visibility = "hidden"; }, 100);
+        };
+        playerArea.addEventListener("mouseleave", () => hide());
         playerArea.addEventListener("mousemove", e => {
-            let clientRect = playerArea.getBoundingClientRect();
-            if (e.pageY < clientRect.top + window.scrollY + clientRect.height * 0.65) {
+            const r = playerArea.getBoundingClientRect();
+            if (e.pageY < r.top + window.scrollY + r.height * 0.65) {
                 hide();
             } else {
                 visibility = true;
-                for (let vp of this.vpUI) {
-                    vp.el.style.visibility = "";
-                    vp.el.style.opacity = "1";
-                }
+                for (const vp of this.vpUI) { vp.el.style.visibility = ""; vp.el.style.opacity = "1"; }
             }
         });
-        // 鼠标与看点图标的交互
         trackerWrp.addEventListener("mousemove", e => {
             let closestPoint = 1e6;
-            // 鼠标位置->视频时间点
-            let pos = Mouse2Pos(e);
-            let thumbnailArea = 80 / (trackerWrp.clientWidth - handleWidth) * videoDuration;
-            let hitArea = trackerWrp.clientWidth > 400 ? thumbnailArea / 10 : thumbnailArea / 20; // 显示标题的鼠标坐标范围
-            for (let vp of this.vpUI) {
+            const pos = Mouse2Pos(e);
+            const thumbnailArea = 80 / (trackerWrp.clientWidth - handleWidth) * videoDuration;
+            const hitArea = trackerWrp.clientWidth > 400 ? thumbnailArea / 10 : thumbnailArea / 20;
+            for (const vp of this.vpUI) {
                 vp.el.style.zIndex = "";
-                if (vp.info.to >= pos - hitArea && vp.info.to <= pos + hitArea && Math.abs(vp.info.to - pos) < closestPoint) {
+                if (vp.info.to >= pos - hitArea && vp.info.to <= pos + hitArea
+                    && Math.abs(vp.info.to - pos) < closestPoint) {
                     this.chptName.innerHTML = vp.info.content;
                     closestPoint = Math.abs(vp.info.to - pos);
                     vp.el.style.zIndex = "1000";
                 }
             }
-            if (closestPoint == 1e6) this.chptName.innerHTML = "";
+            if (closestPoint === 1e6) this.chptName.innerHTML = "";
         });
         this.player.bind(STATE.EVENT.VIDEO_PLAYER_RESIZE, () => update());
         trackerWrp.addEventListener("mouseleave", () => {
-            for (let vp of this.vpUI) {
-                vp.el.className = "bilibili-progress-segmentation-logo";
-            }
+            for (const vp of this.vpUI) vp.el.className = "bilibili-progress-segmentation-logo";
         });
-
     }
 
-    private initGeneralUI() {
-        // 创建显示在视频预览缩略图上方的看点标题
+    private initPanelUI() {
         this.chptName = divWithClass("bilibili-progress-detail-chapter");
-        (<HTMLDivElement>document.querySelector(".bilibili-player-video-progress-detail")).appendChild(this.chptName);
+        (<HTMLDivElement>document.querySelector(".bilibili-player-video-progress-detail"))
+            .appendChild(this.chptName);
 
-        // 添加“视频看点”面板
-        let wrapList = <HTMLDivElement>document.querySelector("div.bilibili-player-wraplist"); // 获取播放器右侧面板的容器div
-        let panels = wrapList.children;
+        const wrapList = <HTMLDivElement>document.querySelector("div.bilibili-player-wraplist");
+        const panels   = wrapList.children;
 
-        let chptPanel = divWithClass("bilibili-player-filter-wrap bilibili-player-chapterList"); // “视频看点”容器
+        const chptPanel = divWithClass("bilibili-player-filter-wrap bilibili-player-chapterList");
         chptPanel.style.display = "none";
         wrapList.appendChild(chptPanel);
 
-        let chptBtn = divWithClass("bilibili-player-filter-btn bilibili-player-filter-chapter bpui-component bpui-button bpui-button-type-small button"); // “视频看点”按钮
-        chptBtn.innerHTML = '<span class="bpui-button-text"><span>视频看点</span></span>';
-        document.querySelector("div.bilibili-player-filter")!.appendChild(chptBtn);
+        const listWrap = divWithClass("bilibili-player-viewpoint-wrap");
+        chptPanel.appendChild(listWrap);
+
+        this.listUL = document.createElement("ul");
+        this.listUL.className = "bilibili-player-viewpoint-list";
+        listWrap.appendChild(this.listUL);
+
+        const chptBtn = divWithClass(
+            "bilibili-player-filter-btn bilibili-player-filter-chapter bpui-component bpui-button bpui-button-type-small button"
+        );
+        chptBtn.innerHTML = `<span class="bpui-button-text"><span>视频看点</span></span>`;
+        document.querySelector(`div.bilibili-player-filter`)!.appendChild(chptBtn);
 
         chptBtn.onclick = () => {
-            let activePanel = <HTMLDivElement>document.querySelector("div.bilibili-player-filter-btn.active");
-            if (activePanel == chptBtn) return;
-            // 切换按钮的激活状态
+            const activePanel = <HTMLDivElement>document.querySelector(`div.bilibili-player-filter-btn.active`);
+            if (activePanel === chptBtn) return;
             activePanel.classList.remove("active");
             chptBtn.classList.add("active");
             for (let i = 0; i < panels.length; i++) {
-                const element = <HTMLDivElement>panels[i];
-                if (element.style.display == "block") {
-                    element.style.display = "none";
-                    break;
-                }
+                const el = <HTMLDivElement>panels[i];
+                if (el.style.display === "block") { el.style.display = "none"; break; }
             }
-            // 创建各个看点对应的UI卡片
-            if (!this.chptInfo) {
-                this.chptInfo = [];
-                for (let i = 0, v; i < this.viewPoints.length; i++) {
-                    v = this.viewPoints[i];
-                    this.chptInfo[i] = this.chptInfoTPL(v.from, v.to - v.from, v);
-                    chptPanel.appendChild(this.chptInfo[i]);
-                }
-            };
+            if (this.listItems.length === 0) {
+                this.viewPoints.forEach((v, i) => {
+                    const li = this.buildListItem(v, i);
+                    this.listItems.push(li);
+                    this.listUL.appendChild(li);
+                });
+            }
             chptPanel.style.display = "block";
-            // 将当前的播放进度对应的UI卡片显示为灰色底色
             this.refreshPanel();
-        }
+        };
         chptPanel.onmouseenter = () => this.refreshPanel();
+    }
+
+    private fmTime(sec: number) {
+        const m = Math.floor(sec / 60), s = Math.floor(sec % 60);
+        return `${m < 10 ? "0" + m : m}:${s < 10 ? "0" + s : s}`;
+    }
+
+    private buildListItem(v: IViewPoint, index: number): HTMLLIElement {
+        const li = document.createElement("li");
+        li.className = "bilibili-player-viewpoint-item";
+        li.dataset.index = String(index);
+        li.setAttribute("data-state-play", "false");
+
+        li.innerHTML = `
+            <div class="bilibili-player-viewpoint-item-sup clearfix">
+                <div class="bilibili-player-viewpoint-order-cell bilibili-player-fl">
+                    <div class="bilibili-player-viewpoint-order-number">${index + 1}</div>
+                    <div class="bilibili-player-viewpoint-order-play">
+                        <i class="bilibili-player-iconfont icon-12toview-play"></i>
+                    </div>
+                </div>
+                <div class="bilibili-player-viewpoint-cover-cell bilibili-player-fl">
+                    ${v.imgUrl
+                        ? `<img src="${v.imgUrl}" alt="${v.content}">`
+                        : `<div class="bilibili-player-viewpoint-cover-placeholder"></div>`
+                    }
+                </div>
+                <div class="bilibili-player-viewpoint-info-cell bilibili-player-fl">
+                    <div class="bilibili-player-viewpoint-info-title" title="${v.content}">${v.content}</div>
+                    <div class="bilibili-player-viewpoint-info-other">
+                        <div class="bilibili-player-viewpoint-info-time bilibili-player-fl">${this.fmTime(v.from)}</div>
+                        <div class="bilibili-player-viewpoint-info-playing bilibili-player-fr">播放中</div>
+                    </div>
+                </div>
+            </div>`;
+
+        li.addEventListener("click", () => {
+            this.player.seek(v.from);
+            this.setActiveItem(index);
+        });
+
+        return li;
+    }
+
+    private setActiveItem(index: number) {
+        this.listItems.forEach((li, i) => {
+            li.setAttribute("data-state-play", i === index ? "true" : "false");
+        });
     }
 
     private bindEvents() {
         this.player.bind(STATE.EVENT.VIDEO_MEDIA_PLAYING, () => this.timer.start());
-        this.player.bind(STATE.EVENT.VIDEO_MEDIA_PAUSE, () => this.timer.start());
-        this.player.bind(STATE.EVENT.VIDEO_MEDIA_SEEKED, () => this.refreshPanel());
-    }
-
-    private chptInfoTPL(from: number, dura: number, v: IViewPoint) {
-        let timeFormat = (t: number) => t < 10 ? "0" + t : t;
-        let div = divWithClass("bilibili-player-chapter-info");
-        div.innerHTML = `<img width="112" height="63" src="${v.imgUrl}"/>
-                            <p class="chapter-name">${v.content}</p>
-                            <span style="margin-left: 138px">${timeFormat(Math.floor(from / 60))}:${timeFormat(from % 60)}</span>
-                            <span style="margin-right: 5px; float: right;">${dura >= 60 ? `${Math.floor(dura / 60)}分` : ""}${dura > 0 ? `${dura % 60}秒` : ""}</span>`;
-        div.onclick = (jumpto => () => {
-            this.player.seek(jumpto);
-            let active = document.querySelector(".bilibili-player-chapter-info.active");
-            active && active.classList.remove("active");
-            div.classList.add("active");
-        })(from);
-        return div;
+        this.player.bind(STATE.EVENT.VIDEO_MEDIA_PAUSE,   () => this.timer.start());
+        this.player.bind(STATE.EVENT.VIDEO_MEDIA_SEEKED,  () => this.refreshPanel());
     }
 
     private refreshPanel() {
-        if (!this.chptInfo) return;
-        let progress = this.player.currentTime() || 0;
-        if (this.type == 1) {
-            let active = document.querySelector(".bilibili-player-chapter-info.active");
-            active && active.classList.remove("active");
-            for (let i = 0, v; i < this.viewPoints.length; i++) {
-                v = this.viewPoints[i];
-                if (Math.abs(progress - v.to) < 5) {
-                    this.chptInfo[i].classList.add("active");
-                    break;
-                }
-            }
+        if (this.listItems.length === 0) return;
+        const progress = this.player.currentTime() || 0;
+        let activeIndex = -1;
+
+        if (this.type === 1) {
+            let minDist = 1e6;
+            this.viewPoints.forEach((v, i) => {
+                const d = Math.abs(progress - v.to);
+                if (d < 5 && d < minDist) { minDist = d; activeIndex = i; }
+            });
         } else {
-            for (let i = 0, v; i < this.viewPoints.length; i++) {
-                v = this.viewPoints[i];
-                if (progress < v.to) {
-                    let active = document.querySelector(".bilibili-player-chapter-info.active");
-                    active && active.classList.remove("active");
-                    this.chptInfo[i].classList.add("active");
-                    break;
-                }
+            for (let i = 0; i < this.viewPoints.length; i++) {
+                if (progress < this.viewPoints[i].to) { activeIndex = i; break; }
             }
         }
+        this.setActiveItem(activeIndex);
     }
 }
 
 class BaseViewPoint {
     ui: HTMLElement;
-    constructor(className: string, v: IViewPoint) {
+    constructor(className: string, _v: IViewPoint) {
         this.ui = document.createElement("div");
         this.ui.className = className;
     }
@@ -271,48 +281,41 @@ class eSportViewPoint extends BaseViewPoint {
     constructor(v: IViewPoint, player: Player) {
         super("bilibili-progress-segmentation-logo", v);
 
-        let title = document.createElement("div"); // 看点标题
+        const title = document.createElement("div");
         title.innerHTML = "-> " + v.content;
         title.className = "bilibili-progress-detail-chapter";
-        title.style.cssText = "width: auto; transform: translateX(-50%); display: none";
+        title.style.cssText = "width:auto;transform:translateX(-50%);display:none";
 
         let img: HTMLImageElement | SVGSVGElement;
         if (v.logoUrl) {
-            img = <HTMLImageElement>document.createElement("img"); // 看点图标
+            img = <HTMLImageElement>document.createElement("img");
             img.id = "segmentation-logo"; img.width = 32; img.height = 36; img.src = v.logoUrl;
         } else {
             img = document.createElementNS("http://www.w3.org/2000/svg", "svg");
             img.setAttribute("viewBox", "0 -3 32 36");
             img.innerHTML = `
-            <defs>
-            <radialGradient id="gradient">
-                    <stop offset="10%" stop-color="#ffe78f"></stop>
-                    <stop offset="40%" stop-color="#ffe996"></stop>
-                    <stop offset="95%" stop-color="#fcecae"></stop>
-                </radialGradient>
-            </defs>
-            <path style="fill: rgb(252, 236, 174); stroke: rgb(252, 236, 174);" d="M 16 32.097 C 13.312 32.106 10.608 30.145 11 25.897 C 11.265 22.744 16 17.097 16 17.097 C 16 17.097 20.822 22.697 21.022 25.897 C 21.322 30.097 18.801 32.088 16 32.097 Z" transform="matrix(-1, 0, 0, -1, 32.021761, 49.196602)"></path>
+            <defs><radialGradient id="gradient">
+                <stop offset="10%" stop-color="#ffe78f"/>
+                <stop offset="40%" stop-color="#ffe996"/>
+                <stop offset="95%" stop-color="#fcecae"/>
+            </radialGradient></defs>
+            <path style="fill:rgb(252,236,174);stroke:rgb(252,236,174)"
+                d="M16 32.097C13.312 32.106 10.608 30.145 11 25.897C11.265 22.744 16 17.097 16 17.097
+                   C16 17.097 20.822 22.697 21.022 25.897C21.322 30.097 18.801 32.088 16 32.097Z"
+                transform="matrix(-1,0,0,-1,32.021761,49.196602)"/>
             <circle cx="16" cy="22" r="5" fill="url(#gradient)"/>`;
         }
-        img.addEventListener("mousemove", e => e.stopPropagation());
-        img.addEventListener("mouseenter", () => {
-            title.style.display = "";
-            img.style.zIndex = "1000";
-        });
-        img.addEventListener("mouseleave", () => {
-            title.style.display = "none";
-            img.style.zIndex = "";
-        });
-        img.addEventListener("click", () => player.seek(v.from));
+        img.addEventListener("mousemove",  e => e.stopPropagation());
+        img.addEventListener("mouseenter", () => { title.style.display = ""; (img as HTMLElement).style.zIndex = "1000"; });
+        img.addEventListener("mouseleave", () => { title.style.display = "none"; (img as HTMLElement).style.zIndex = ""; });
+        img.addEventListener("click",      () => player.seek(v.from));
         this.ui.appendChild(title);
         this.ui.appendChild(img);
     }
 }
 
 class CommonViewPoint extends BaseViewPoint {
-    constructor(v: IViewPoint) {
-        super("bilibili-progress-segmentation", v);
-    }
+    constructor(v: IViewPoint) { super("bilibili-progress-segmentation", v); }
 }
 
 export default ViewPointList;
