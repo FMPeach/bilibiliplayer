@@ -85,9 +85,14 @@ class ViewPointList {
 
     private arrangeCommonVP() {
         const duration = this.vpUI[this.vpUI.length - 1].info.to;
-        for (const vp of this.vpUI) {
+        const total = this.vpUI.length;
+        for (let i = 0; i < total; i++) {
+            const vp = this.vpUI[i];
             const ui = vp.el;
             ui.className = "bilibili-progress-segmentation";
+            // 标记首尾分段，CSS 凭此决定是否显示首/尾边界线
+            if (i === 0) ui.classList.add("is-first");
+            if (i === total - 1) ui.classList.add("is-last");
             const ratio = videoDuration / duration / duration;
             ui.style.width = (vp.info.to - vp.info.from) * ratio * 100 + "%";
             ui.style.left  = vp.info.from * ratio * 100 + "%";
