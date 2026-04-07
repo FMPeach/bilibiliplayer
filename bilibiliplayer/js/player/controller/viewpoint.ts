@@ -178,6 +178,17 @@ class ViewPointList {
         chptBtn.innerHTML = `<span class="bpui-button-text"><span>视频看点</span></span>`;
         document.querySelector(`div.bilibili-player-filter`)!.appendChild(chptBtn);
 
+        const $listWrap = $(listWrap);
+        $listWrap.mCustomScrollbar({
+            axis: "y",
+            scrollInertia: 100,
+            autoHideScrollbar: true,
+            mouseWheel: {
+                scrollAmount: 80,
+                preventDefault: false,
+            },
+        });
+
         chptBtn.onclick = () => {
             const activePanel = <HTMLDivElement>document.querySelector(`div.bilibili-player-filter-btn.active`);
             if (activePanel === chptBtn) return;
@@ -195,6 +206,7 @@ class ViewPointList {
                 });
             }
             chptPanel.style.display = "block";
+            $listWrap.mCustomScrollbar("update");
             this.refreshPanel();
         };
         chptPanel.onmouseenter = () => this.refreshPanel();
