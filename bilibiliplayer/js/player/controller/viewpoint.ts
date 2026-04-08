@@ -84,7 +84,6 @@ class ViewPointList {
     }
 
     private arrangeCommonVP() {
-        const duration = this.vpUI[this.vpUI.length - 1].info.to;
         const total = this.vpUI.length;
         for (let i = 0; i < total; i++) {
             const vp = this.vpUI[i];
@@ -93,12 +92,48 @@ class ViewPointList {
             // 标记首尾分段，CSS 凭此决定是否显示首/尾边界线
             if (i === 0) ui.classList.add("is-first");
             if (i === total - 1) ui.classList.add("is-last");
-            const ratio = videoDuration / duration / duration;
-            ui.style.width = (vp.info.to - vp.info.from) * ratio * 100 + "%";
-            ui.style.left  = vp.info.from * ratio * 100 + "%";
             ui.innerHTML   = "<div><div></div></div>";
             ui.onmouseenter = () => { this.chptName.innerHTML = vp.info.content; };
         }
+        
+        const updateLayout = () => {
+            const duration = this.player.duration() || videoDuration;
+            if (duration <= 0) return;
+            
+            const W = trackerWrp.clientWidth;
+            const hw = handleWidth || 14;
+            if (W <= hw) return;
+            
+            const halfHw = hw / 2;
+            const usable = W - hw;
+            
+            const timePoints: number[] = [];
+            for (const vp of this.vpUI) {
+                timePoints.push(vp.info.from);
+            }
+            timePoints.push(this.vpUI[this.vpUI.length - 1].info.to);
+            
+            const pixelPoints = timePoints.map(t => t / duration * usable + halfHw);
+            
+            for (let i = 0; i < this.vpUI.length; i++) {
+                const vp = this.vpUI[i];
+                let leftEdge = pixelPoints[i];
+                let rightEdge = pixelPoints[i + 1];
+                
+                if (vp.el.classList.contains("is-first")) {
+                    leftEdge = 0;
+                }
+                if (vp.el.classList.contains("is-last")) {
+                    rightEdge = W;
+                }
+                
+                vp.el.style.left = leftEdge + "px";
+                vp.el.style.width = (rightEdge - leftEdge) + "px";
+            }
+        };
+        
+        setTimeout(() => updateLayout(), 250);
+        this.player.bind(STATE.EVENT.VIDEO_PLAYER_RESIZE, () => updateLayout());
     }
 
     private arrangeEsportVP() {
