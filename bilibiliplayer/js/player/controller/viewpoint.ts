@@ -30,12 +30,6 @@ function divWithClass(cls: string) {
     d.className = cls;
     return d;
 }
-class Timer {
-    private handle: any;
-    constructor(public callback: Function) {}
-    start() { if (!this.handle) this.handle = setInterval(() => this.callback(), 3000); }
-    stop()  { if (this.handle) { clearInterval(this.handle); this.handle = null; } }
-}
 class CSS {
     static hash: Record<string, boolean> = {};
     static add(cssText: string, symbol: string) {
@@ -51,7 +45,6 @@ class CSS {
 
 class ViewPointList {
     private listItems: HTMLLIElement[] = [];
-    private timer: Timer;
     private vpUI: { info: IViewPoint; el: HTMLElement }[];
     private type: number;
     private chptName!: HTMLDivElement;
@@ -64,7 +57,6 @@ class ViewPointList {
             .find(".bilibili-player-video-progress-bar")[0];
         initSharedTools(player);
 
-        this.timer = new Timer(() => this.refreshPanel());
         this.initPanelUI();
         this.bindEvents();
 
@@ -84,6 +76,7 @@ class ViewPointList {
     }
 
     private arrangeCommonVP() {
+        const duration = this.vpUI[this.vpUI.length - 1].info.to;
         const total = this.vpUI.length;
         for (let i = 0; i < total; i++) {
             const vp = this.vpUI[i];
@@ -92,10 +85,13 @@ class ViewPointList {
             // 标记首尾分段，CSS 凭此决定是否显示首/尾边界线
             if (i === 0) ui.classList.add("is-first");
             if (i === total - 1) ui.classList.add("is-last");
+            const ratio = videoDuration / duration / duration;
+            ui.style.width = (vp.info.to - vp.info.from) * ratio * 100 + "%";
+            ui.style.left  = vp.info.from * ratio * 100 + "%";
             ui.innerHTML   = "<div><div></div></div>";
             ui.onmouseenter = () => { this.chptName.innerHTML = vp.info.content; };
         }
-        
+                
         const updateLayout = () => {
             const duration = this.player.duration() || videoDuration;
             if (duration <= 0) return;
@@ -296,9 +292,8 @@ class ViewPointList {
     }
 
     private bindEvents() {
-        this.player.bind(STATE.EVENT.VIDEO_MEDIA_PLAYING, () => this.timer.start());
-        this.player.bind(STATE.EVENT.VIDEO_MEDIA_PAUSE,   () => this.timer.start());
-        this.player.bind(STATE.EVENT.VIDEO_MEDIA_SEEKED,  () => this.refreshPanel());
+        this.player.bind(STATE.EVENT.VIDEO_MEDIA_TIME,   () => this.refreshPanel());
+        this.player.bind(STATE.EVENT.VIDEO_MEDIA_SEEKED, () => this.refreshPanel());
     }
 
     private refreshPanel() {
