@@ -405,16 +405,9 @@ async function resolve(resolveParams: any, resolved: any, rejected?: any) {
         } else if (player.config.seasonType >= 1) {
             playurlRequest(URLS.PLAYURL_PGC);
         } else if (player.config.playerType === 1) {
-            const callbackHandle = callbackTable.push(callback) - 1;
-            emResolve(
-                domainsName(rp.domain, player.config.inner!),
-                rp.enableSSLResolve,
-                rp.cid,
-                rp.quality,
-                rp.type,
-                rp.extra_params,
-                callbackHandle,
-            );
+            // 跨季选集时 playerType === 1，但不应走 bangumiS 接口
+            // 改为直接走普通的 playurl 请求
+            playurlRequest(URLS.PLAYURL_PGC);
         } else {
             playurlRequest(URLS.PLAYURL);
         }

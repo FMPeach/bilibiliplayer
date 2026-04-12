@@ -118,9 +118,7 @@ export class ReloadMedia {
             domain:
                 this.player.config.seasonType >= 1
                     ? Resolve.domains.bangumi
-                    : this.player.config.playerType === 1
-                        ? Resolve.domains.bangumiS
-                        : Resolve.domains.interface,
+                    : Resolve.domains.interface,
             enableSSLResolve: this.player.config.enableSSLResolve,
             enableSSLStream: this.player.config.enableSSLStream,
             cid: this.player.config.cid,

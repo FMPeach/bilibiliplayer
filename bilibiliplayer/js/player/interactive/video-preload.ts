@@ -68,9 +68,7 @@ export class VideoPreload {
             domain:
                 that.config.seasonType >= 1
                     ? Resolve.domains.bangumi
-                    : that.config.playerType === 1
-                        ? Resolve.domains.bangumiS
-                        : Resolve.domains.interface,
+                    : Resolve.domains.interface,
             enableSSLResolve: that.config.enableSSLResolve,
             enableSSLStream: that.config.enableSSLStream,
             cid: cid,
