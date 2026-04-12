@@ -128,7 +128,7 @@ class ViewPointList {
             }
         };
         
-        setTimeout(() => updateLayout(), 250);
+        setTimeout(() => updateLayout());
         this.player.bind(STATE.EVENT.VIDEO_PLAYER_RESIZE, () => updateLayout());
     }
 
