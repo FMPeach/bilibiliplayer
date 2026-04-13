@@ -38,8 +38,11 @@ export class Recommend {
 
         this.scrollbar = $(`<div class="${prefix}-panel-scrollbar"></div>`).appendTo(container);
 
-        if (this.pgcType && auxiliary.player.extraParams?.recommend) {
-            this.itemSnippet(<any>auxiliary.player.extraParams.recommend);
+        // 优先从 getPlayerExtraParams 获取最新数据（跨季时 extraParams 缓存可能过时）
+        const recommend = auxiliary.player.window?.['getPlayerExtraParams']?.()?.recommend
+            || auxiliary.player.extraParams?.recommend;
+        if (recommend) {
+            this.itemSnippet(<any>recommend);
         } else {
             new ApiPlaytag({
                 aid: auxiliary.config.aid,
