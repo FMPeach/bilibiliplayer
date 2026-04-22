@@ -123,12 +123,16 @@ class AuxiliaryUI {
         });
 
         this.settingMenu.off('click').on("click", function (e) {
-            const $this = $(e.target);
-            if ($this.hasClass('disabled') || $this.hasClass('active')) {
+            const $item = $(e.target).closest(`.${prefix}-setting-menu-list`);
+            if (!$item.length) {
+                return;
+            }
+            if ($item.hasClass('disabled') || $item.hasClass('active')) {
                 return false;
             }
-            auxiliary.trackInfoPush($this.attr('name')!);
-            that.showTabList($this.attr('value')!, $this.attr('label')!);
+            that.settingMenu.hide();
+            auxiliary.trackInfoPush($item.attr('name')!);
+            that.showTabList($item.attr('value')!, $item.attr('label')!);
         });
 
     }
@@ -215,6 +219,9 @@ class AuxiliaryUI {
             case STATE.PANEL.FUNCTIONWINDOW:
                 const endingPanel = auxiliary.player.controller.getEndingPanel();
                 if (endingPanel) {
+                    if (auxiliary.player.state.video_state !== STATE.V_PAUSE) {
+                        auxiliary.player.pause();
+                    }
                     endingPanel.toggle();
                 }
                 break;
