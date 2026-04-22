@@ -38,6 +38,10 @@ class ViewPointList {
     private chptName!: HTMLDivElement;
     private listUL!: HTMLUListElement;
     private progressDetail!: HTMLDivElement;
+    private $listWrap!: JQuery<HTMLElement>;
+    private lastActiveIndex = -1;
+    private hasSyncedActiveIndex = false;
+    private autoSwitchFadeDuration = 150;
 
     constructor(private player: Player, private viewPoints: IViewPoint[]) {
         sliderTracker = <HTMLDivElement>player.template.controller
@@ -202,8 +206,8 @@ class ViewPointList {
         chptBtn.innerHTML = `<span class="bpui-button-text"><span>视频看点</span></span>`;
         document.querySelector(`div.bilibili-player-filter`)!.appendChild(chptBtn);
 
-        const $listWrap = $(listWrap);
-        $listWrap.mCustomScrollbar({
+        this.$listWrap = $(listWrap);
+        this.$listWrap.mCustomScrollbar({
             axis: "y",
             scrollInertia: 100,
             autoHideScrollbar: true,
@@ -230,7 +234,7 @@ class ViewPointList {
                 });
             }
             chptPanel.style.display = "block";
-            $listWrap.mCustomScrollbar("update");
+            this.$listWrap.mCustomScrollbar("update");
             this.refreshPanel();
         };
         chptPanel.onmouseenter = () => this.refreshPanel();
@@ -272,15 +276,62 @@ class ViewPointList {
 
         li.addEventListener("click", () => {
             this.player.seek(v.from);
-            this.setActiveItem(index);
+            this.setActiveItem(index, false);
         });
 
         return li;
     }
 
-    private setActiveItem(index: number) {
+    private setActiveItem(index: number, withTransition = true) {
+        const changed = index !== this.lastActiveIndex;
         this.listItems.forEach((li, i) => {
             li.setAttribute("data-state-play", i === index ? "true" : "false");
+        });
+        if (!this.hasSyncedActiveIndex) {
+            this.hasSyncedActiveIndex = true;
+            this.lastActiveIndex = index;
+            return;
+        }
+        if (!changed) return;
+        this.lastActiveIndex = index;
+        if (index >= 0) {
+            if (withTransition) this.playAutoSwitchTransition(index);
+            this.scrollToActiveItem(index);
+        }
+    }
+
+    private playAutoSwitchTransition(index: number) {
+        const item = this.listItems[index];
+        if (!item || item.matches(":hover") || typeof item.animate !== "function") return;
+        item.animate(
+            [
+                { backgroundColor: "rgba(229, 245, 251, 0)" },
+                { backgroundColor: "rgba(229, 245, 251, 1)" },
+            ],
+            {
+                duration: this.autoSwitchFadeDuration,
+                easing: "linear",
+            }
+        );
+    }
+
+    private scrollToActiveItem(index: number) {
+        if (!this.$listWrap || !this.$listWrap.is(":visible")) return;
+        const item = this.listItems[index];
+        if (!item) return;
+
+        const $item = $(item);
+        const contentContainer = this.$listWrap.find(".mCSB_container");
+        const baseEl = contentContainer.length ? contentContainer : this.$listWrap;
+        const top = $item.offset()!.top - baseEl.offset()!.top;
+        const prevItem = $item.prev(".bilibili-player-viewpoint-item");
+        const prevHeight = prevItem.length ? prevItem.outerHeight()! : $item.outerHeight()!;
+        const targetTop = Math.max(0, top - prevHeight);
+
+        this.$listWrap.mCustomScrollbar("scrollTo", targetTop + "px", {
+            scrollInertia: 260,
+            scrollEasing: "easeOut",
+            timeout: 0,
         });
     }
 
