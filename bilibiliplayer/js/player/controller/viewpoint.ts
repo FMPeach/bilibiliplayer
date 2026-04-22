@@ -30,18 +30,6 @@ function divWithClass(cls: string) {
     d.className = cls;
     return d;
 }
-class CSS {
-    static hash: Record<string, boolean> = {};
-    static add(cssText: string, symbol: string) {
-        if (!Object.hasOwn(CSS.hash, symbol)) {
-            const s = document.createElement("style");
-            s.setAttribute("type", "text/css");
-            s.appendChild(document.createTextNode(cssText));
-            document.head.appendChild(s);
-            CSS.hash[symbol] = true;
-        }
-    }
-}
 
 class ViewPointList {
     private listItems: HTMLLIElement[] = [];
@@ -49,6 +37,7 @@ class ViewPointList {
     private type: number;
     private chptName!: HTMLDivElement;
     private listUL!: HTMLUListElement;
+    private progressDetail!: HTMLDivElement;
 
     constructor(private player: Player, private viewPoints: IViewPoint[]) {
         sliderTracker = <HTMLDivElement>player.template.controller
@@ -89,7 +78,8 @@ class ViewPointList {
             ui.style.width = (vp.info.to - vp.info.from) * ratio * 100 + "%";
             ui.style.left  = vp.info.from * ratio * 100 + "%";
             ui.innerHTML   = "<div><div></div></div>";
-            ui.onmouseenter = () => { this.chptName.innerHTML = vp.info.content; };
+            ui.onmouseenter = () => { this.setPreviewChapter(vp.info.content); };
+            ui.onmouseleave = () => { this.setPreviewChapter(""); };
         }
                 
         const updateLayout = () => {
@@ -130,25 +120,21 @@ class ViewPointList {
         
         setTimeout(() => updateLayout());
         this.player.bind(STATE.EVENT.VIDEO_PLAYER_RESIZE, () => updateLayout());
+        trackerWrp.addEventListener("mouseleave", () => this.setPreviewChapter(""));
     }
 
     private arrangeEsportVP() {
-        CSS.add(`
-            #app #bilibiliPlayer .bilibili-player-video-progress-detail > .bilibili-player-video-progress-detail-img { top:-120px }
-            .bilibili-player-video-progress-detail > .bilibili-player-video-progress-detail-time { top:-48px }
-        `, "esportVP_CSS");
-
         const update = () => {
             for (const vp of this.vpUI) vp.el.style.left = Time2Pos(vp.info.to);
         };
         setTimeout(() => update(), 500);
-        this.chptName.style.top = "-150px";
 
         const playerArea = <HTMLElement>document.getElementsByClassName("bilibili-player-area")[0];
         let visibility = true;
         const hide = () => {
             if (!visibility) return;
             visibility = false;
+            this.setPreviewChapter("");
             for (const vp of this.vpUI) vp.el.style.opacity = "0";
             setTimeout(() => { for (const vp of this.vpUI) vp.el.style.visibility = "hidden"; }, 100);
         };
@@ -171,23 +157,30 @@ class ViewPointList {
                 vp.el.style.zIndex = "";
                 if (vp.info.to >= pos - hitArea && vp.info.to <= pos + hitArea
                     && Math.abs(vp.info.to - pos) < closestPoint) {
-                    this.chptName.innerHTML = vp.info.content;
+                    this.setPreviewChapter(vp.info.content);
                     closestPoint = Math.abs(vp.info.to - pos);
                     vp.el.style.zIndex = "1000";
                 }
             }
-            if (closestPoint === 1e6) this.chptName.innerHTML = "";
+            if (closestPoint === 1e6) this.setPreviewChapter("");
         });
         this.player.bind(STATE.EVENT.VIDEO_PLAYER_RESIZE, () => update());
         trackerWrp.addEventListener("mouseleave", () => {
+            this.setPreviewChapter("");
             for (const vp of this.vpUI) vp.el.className = "bilibili-progress-segmentation-logo";
         });
     }
 
+    private setPreviewChapter(content: string) {
+        const text = content ? content.trim() : "";
+        this.chptName.textContent = text;
+        this.progressDetail.classList.toggle("bilibili-player-video-progress-detail-has-chapter", !!text);
+    }
+
     private initPanelUI() {
-        this.chptName = divWithClass("bilibili-progress-detail-chapter");
-        (<HTMLDivElement>document.querySelector(".bilibili-player-video-progress-detail"))
-            .appendChild(this.chptName);
+        this.chptName = divWithClass("bilibili-progress-detail-chapter bilibili-progress-detail-chapter-preview");
+        this.progressDetail = <HTMLDivElement>document.querySelector(".bilibili-player-video-progress-detail");
+        this.progressDetail.appendChild(this.chptName);
 
         const wrapList = <HTMLDivElement>document.querySelector("div.bilibili-player-wraplist");
         const panels   = wrapList.children;
@@ -328,11 +321,6 @@ class eSportViewPoint extends BaseViewPoint {
     constructor(v: IViewPoint, player: Player) {
         super("bilibili-progress-segmentation-logo", v);
 
-        const title = document.createElement("div");
-        title.innerHTML = "-> " + v.content;
-        title.className = "bilibili-progress-detail-chapter";
-        title.style.cssText = "width:auto;transform:translateX(-50%);display:none";
-
         let img: HTMLImageElement | SVGSVGElement;
         if (v.logoUrl) {
             img = <HTMLImageElement>document.createElement("img");
@@ -352,11 +340,7 @@ class eSportViewPoint extends BaseViewPoint {
                 transform="matrix(-1,0,0,-1,32.021761,49.196602)"/>
             <circle cx="16" cy="22" r="5" fill="url(#gradient)"/>`;
         }
-        img.addEventListener("mousemove",  e => e.stopPropagation());
-        img.addEventListener("mouseenter", () => { title.style.display = ""; (img as HTMLElement).style.zIndex = "1000"; });
-        img.addEventListener("mouseleave", () => { title.style.display = "none"; (img as HTMLElement).style.zIndex = ""; });
         img.addEventListener("click",      () => player.seek(v.from));
-        this.ui.appendChild(title);
         this.ui.appendChild(img);
     }
 }
