@@ -31,7 +31,7 @@ class SubtitleButton {
     private videoLan: string = '';
     private bilingual!: Checkbox;
     private lanSelect!: Selectmenu;
-    private subtitleList!: any[];
+    private subtitleList!: ISubtitleInterface[];
     private localSaved: any;
     private isClosed: boolean;
     private enableTestSubtitle!: boolean;
@@ -43,6 +43,23 @@ class SubtitleButton {
     private fontsize?: Slider;
     private icon: JQuery<HTMLElement>;
     private download?: Button;
+
+    private getSubtitleDisplayName(item: ISubtitleInterface) {
+        const displayName = item?.lan_doc || item?.lan || '';
+        const aiType = Number(item?.ai_type);
+        const aiStatus = Number(item?.ai_status);
+
+        if (aiStatus !== 2) {
+            return displayName;
+        }
+        if (aiType === 0) {
+            return displayName.includes('自动生成') ? displayName : `${displayName}（自动生成）`;
+        }
+        if (aiType === 1) {
+            return displayName.includes('自动翻译') ? displayName : `${displayName}（自动翻译）`;
+        }
+        return displayName;
+    }
 
     constructor(controller: Controller) {
         this.prefix = controller.prefix;
@@ -245,7 +262,7 @@ class SubtitleButton {
                     items = items.concat(
                         this.subtitleList.map((item) => {
                             return {
-                                name: item['lan_doc'],
+                                name: this.getSubtitleDisplayName(item),
                                 value: item['lan'],
                             };
                         }),
@@ -279,7 +296,7 @@ class SubtitleButton {
                                         let lan = '';
                                         this.subtitleList.some((item) => {
                                             if (item['lan'] === e.value) {
-                                                lan = item['lan_doc'];
+                                                lan = this.getSubtitleDisplayName(item);
                                                 return true;
                                             }
                                         });

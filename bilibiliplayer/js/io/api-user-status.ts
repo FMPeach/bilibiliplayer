@@ -12,11 +12,16 @@ import URLS from './urls';
 
 interface ISubtitleItem {
     id: number;
+    id_str?: string;
     lan: string;
     lan_doc: string;
+    type?: number;
+    ai_type?: number;
+    ai_status?: number;
     is_lock: boolean;
     author_mid?: number;
     subtitle_url: string;
+    subtitle_url_v2?: string;
 }
 
 interface IViewPoint {

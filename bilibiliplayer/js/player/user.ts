@@ -14,8 +14,13 @@ import { ISkipCard } from '../plugins/skip-card';
 export interface ISubtitleInterface {
     author_mid?: number;
     id: number;
+    id_str?: string;
     lan: string;
+    type?: number;
+    ai_type?: number;
+    ai_status?: number;
     subtitle_url: string;
+    subtitle_url_v2?: string;
     lan_doc: string;
 }
 
