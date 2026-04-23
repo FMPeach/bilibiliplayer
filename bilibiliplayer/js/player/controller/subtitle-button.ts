@@ -61,6 +61,17 @@ class SubtitleButton {
         return displayName;
     }
 
+    private isAiSubtitle(item?: ISubtitleInterface) {
+        if (!item) {
+            return false;
+        }
+        return Number(item.ai_status) === 2 || /^ai(-|_|$)/i.test(item.lan || '');
+    }
+
+    private getAutoSubtitleList(subtitles: ISubtitleInterface[] = []) {
+        return subtitles.filter(item => !this.isAiSubtitle(item));
+    }
+
     constructor(controller: Controller) {
         this.prefix = controller.prefix;
         this.player = controller.player;
@@ -70,6 +81,7 @@ class SubtitleButton {
 
         this.wrap = $(`<div class="${this.prefix}-video-btn ${this.prefix}-video-btn-subtitle"></div>`)
             .appendTo(this.controller.container)
+            .hide()
             .on('hover', () => {
                 this.fontsize?.resize();
                 this.backgroundopacity?.resize();
@@ -156,24 +168,39 @@ class SubtitleButton {
     }
     // 设置字幕
     setSubtitle(userStatus: IUserStatusInterface) {
-        if (userStatus.subtitle) {
-            this.subtitleList = userStatus.subtitle['subtitles'];
-            this.videoLan = userStatus.subtitle['lan'];
-        }
-        if (this.subtitleList && this.subtitleList.length) {
-            this.subtitleList.sort((a: any, b: any): any => (a['lan'] > b['lan'] ? 1 : -1));
-            const defaultLanguage = this.getDefaultLanguage(this.subtitleList) || this.subtitleList[0]['lan'];
-            if (defaultLanguage && !this.isClosed) {
-                if (this.loaded) {
-                    setTimeout(() => {
-                        this.lanSelect.value(defaultLanguage);
-                    }, 0);
-                } else {
-                    this.switchSubtitle(defaultLanguage);
-                }
-                // 设置双语字幕
-                this.localSaved && this.localSaved['bilingual'] && this.changeBilingual(true);
+        const subtitles =
+            userStatus.subtitle && Array.isArray(userStatus.subtitle['subtitles']) ? userStatus.subtitle['subtitles'] : [];
+        this.subtitleList = subtitles;
+        this.videoLan = userStatus.subtitle ? userStatus.subtitle['lan'] : '';
+
+        if (!this.subtitleList.length) {
+            this.wrap.hide();
+            if (!this.isClosed) {
+                this.toggleSVG(false, false);
             }
+            return;
+        }
+        this.subtitleList.sort((a: any, b: any): any => (a['lan'] > b['lan'] ? 1 : -1));
+        const nonAiList = this.getAutoSubtitleList(this.subtitleList);
+        if (!nonAiList.length) {
+            this.wrap.show();
+            if (!this.isClosed) {
+                this.toggleSVG(false, false);
+            }
+            return;
+        }
+        this.wrap.show();
+        const defaultLanguage = this.getDefaultLanguage(nonAiList) || nonAiList[0]['lan'];
+        if (defaultLanguage && !this.isClosed) {
+            if (this.loaded) {
+                setTimeout(() => {
+                    this.lanSelect.value(defaultLanguage);
+                }, 0);
+            } else {
+                this.switchSubtitle(defaultLanguage);
+            }
+            // 设置双语字幕
+            this.localSaved && this.localSaved['bilingual'] && this.changeBilingual(true);
         }
     }
 
@@ -217,11 +244,13 @@ class SubtitleButton {
         this.wrap.show();
     }
 
-    private toggleSVG(on: boolean) {
+    private toggleSVG(on: boolean, remember = true) {
         this.isClosed = !on;
         this.icon.html(on ? svg.subtitleOn : svg.subtitleOff);
         on || this.player.subtitle?.clear();
-        this.player.set('subtitle', 'isclosed', !on);
+        if (remember) {
+            this.player.set('subtitle', 'isclosed', !on);
+        }
     }
     private load() {
         if (!this.loaded) {
