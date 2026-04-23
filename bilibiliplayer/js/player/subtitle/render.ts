@@ -313,8 +313,9 @@ class Render {
     }
 
     private move(position: IPositionInterface) {
+        const baseLeft = this.moveRule ? this.moveRule.left : 0;
         this.element.position.css({
-            transform: `translate(${position.x}px, ${position.y}px)`,
+            transform: `translate(${position.x - baseLeft}px, ${position.y}px)`,
         });
     }
 
