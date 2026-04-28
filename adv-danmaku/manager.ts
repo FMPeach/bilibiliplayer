@@ -43,6 +43,8 @@ class Manager {
     status!: boolean;
     sTime: number;
     dmexposure = 0;
+    containerWidth!: number;
+    containerHeight!: number;
 
     constructor(config: IManagerOptions) {
         this.container = config.container;
@@ -68,6 +70,7 @@ class Manager {
         this.cdmList = []; // 当前高级弹幕列表
         this.visableStatus = this.config.visible;
         this.initialType = this.getType();
+        this.updateContainerSize();
     }
 
     count(): number {
@@ -122,8 +125,9 @@ class Manager {
         }
         const gifContainer = document.createElement('canvas');
         const giftext = <CanvasRenderingContext2D>gifContainer.getContext('2d');
-        gifContainer.width = this.container.offsetWidth;
-        gifContainer.height = this.container.offsetHeight;
+        this.updateContainerSize();
+        gifContainer.width = this.containerWidth;
+        gifContainer.height = this.containerHeight;
         for (let i = 0; i < len; i++) {
             const danmaku = this.cdmList[i];
             danmaku.refresh(this.sTime, true);
@@ -192,10 +196,11 @@ class Manager {
     }
 
     resize() {
+        this.updateContainerSize();
         if (this.createStatus) {
             if (this.getType() !== 'div') {
-                (<HTMLCanvasElement>this.canvas).width = this.container.offsetWidth;
-                (<HTMLCanvasElement>this.canvas).height = this.container.offsetHeight;
+                (<HTMLCanvasElement>this.canvas).width = this.containerWidth;
+                (<HTMLCanvasElement>this.canvas).height = this.containerHeight;
             }
             this.drawDanmaku();
         }
@@ -308,8 +313,9 @@ class Manager {
         canvas.style.position = 'absolute';
         canvas.style.left = '0';
         canvas.style.top = '0';
-        canvas.width = this.container.offsetWidth;
-        canvas.height = this.container.offsetHeight;
+        this.updateContainerSize();
+        canvas.width = this.containerWidth;
+        canvas.height = this.containerHeight;
         canvas.style.background = 'transparent';
         canvas.style.zIndex = '10';
         this.ctx = <CanvasRenderingContext2D>canvas.getContext('2d');
@@ -347,8 +353,8 @@ class Manager {
                 startY: parseFloat(text[1]),
                 endX: typeof text[7] === 'undefined' ? parseFloat(text[0]) : parseFloat(text[7]),
                 endY: typeof text[8] === 'undefined' ? parseFloat(text[1]) : parseFloat(text[8]),
-                canvasW: this.container.offsetWidth,
-                canvasH: this.container.offsetHeight,
+                canvasW: this.containerWidth,
+                canvasH: this.containerHeight,
                 container: this.container,
             };
             if (text.length >= 7) {
@@ -402,7 +408,9 @@ class Manager {
                     if (!this.canvas) {
                         this.create();
                     }
-                    this.canvas.appendChild(danmaku.img);
+                    if (!danmaku.img.parentNode || danmaku.img.parentNode !== this.canvas) {
+                        this.canvas.appendChild(danmaku.img);
+                    }
                 } else {
                     if (!danmaku.blocked) {
                         this.ctx.globalAlpha = danmaku.options.cOpacity;
@@ -435,11 +443,12 @@ class Manager {
             typeof this.config.getDanmakuNumber === 'function'
                 ? this.config.getDanmakuNumber()
                 : this.config.danmakuNumber;
+        this.updateContainerSize();
         this.updateSTime();
         this.typeChangeCheck();
-        this.getType() === 'div'
-            ? (this.canvas.innerHTML = '')
-            : this.ctx.clearRect(0, 0, (<HTMLCanvasElement>this.canvas).width, (<HTMLCanvasElement>this.canvas).height);
+        if (this.getType() !== 'div') {
+            this.ctx.clearRect(0, 0, (<HTMLCanvasElement>this.canvas).width, (<HTMLCanvasElement>this.canvas).height);
+        }
         this.refreshCdmList();
         this.drawDanmaku();
     }
@@ -518,6 +527,11 @@ class Manager {
             return false;
         }
         return true;
+    }
+
+    private updateContainerSize() {
+        this.containerWidth = this.container.offsetWidth;
+        this.containerHeight = this.container.offsetHeight;
     }
 
     private escapeXssChars(text: string): string {

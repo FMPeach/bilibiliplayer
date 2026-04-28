@@ -230,8 +230,8 @@ class Danmaku {
             if (!this.img || isShot) {
                 this.img = this.getCanvasImg(isShot);
             }
-            const w = options.container.offsetWidth;
-            const h = options.container.offsetHeight;
+            const w = this.manager.containerWidth;
+            const h = this.manager.containerHeight;
             options.canvasW = w;
             options.canvasH = h;
             if (this.percent.startX || this.percent.startY) {
@@ -290,8 +290,8 @@ class Danmaku {
         const options = this.options;
         const canvas = document.createElement('canvas');
         const ctx = <CanvasRenderingContext2D>canvas.getContext('2d');
-        const w = options.container.offsetWidth;
-        const h = options.container.offsetHeight;
+        const w = this.manager.containerWidth;
+        const h = this.manager.containerHeight;
         let measure;
 
         ctx.font = 'bold ' + options.size + 'px ' + options.family + ', Arial, Helvetica, sans-serif';
@@ -399,8 +399,8 @@ class Danmaku {
         const lines = text.split('\r');
         const options = this.options;
         const len = lines.length;
-        const w = options.container.offsetWidth;
-        const h = options.container.offsetHeight;
+        const w = this.manager.containerWidth;
+        const h = this.manager.containerHeight;
         maxWidth = maxWidth || 0;
 
         // Reset canvas
